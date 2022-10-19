@@ -1,6 +1,6 @@
-sizes: [31, 8, 4, 1]
+sizes: [31, 8, 4, 2, 1]
 learning_rate: 0.05
-activation_function: ["sigmoid", "tanh", "ReLU"]
+activation_function: ["sigmoid", "tanh", "ReLU", "ReLU"]
 loss_function: "MSE" # MSE, BCE, CE
 gradient_type: "SGD"
-epochs: 100
+epochs: 120

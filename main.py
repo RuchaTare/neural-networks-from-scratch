@@ -40,6 +40,7 @@ def pre_process(bcwd_data, train_split=0.70, test_split=0.30):
     #defining dependant and independant variables
     y = bcwd_data[1]
     X = bcwd_data.drop([1],axis=1)
+    y = np.asarray(y)
 
     # Data Splitting
     X_train, X_test, y_train, y_test = train_test_split(X, y, 
@@ -50,12 +51,13 @@ def pre_process(bcwd_data, train_split=0.70, test_split=0.30):
     return X_train, X_test, y_train, y_test
 
 
+
 def main():
     """ Function to run Neural Network
     """
     data = get_data()
     X_train, X_test, y_train, y_test = pre_process(data)
-    print(X_train.head())
+    print(X_train.shape)
     config = get_config_data()
 
     sizes = config["sizes"]
@@ -69,6 +71,7 @@ def main():
     ann = ANN(sizes, activation_function, loss_function, gradient_type)
 
     ann.train(X_train, y_train, learning_rate, epochs)
+
 
 
 if __name__ == "__main__":

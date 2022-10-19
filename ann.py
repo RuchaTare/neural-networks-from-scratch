@@ -18,20 +18,21 @@ class ANN:
         self.loss_function = loss_function
         self.gradient_type = gradient_type
 
-        self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
+        # Defining numpy zeroes for weight and bias list for updates in back propogation
+        self.biases = [np.random.randn(1, y) for y in sizes[1:]]
         self.weights = []
+        delta_weight = []
+        delta_bias = [np.random.randn(1, y) for y in sizes[1:]]
 
         # Taking Xaviers Weight initialization
-        for i in range(1, self.num_of_layers):
-            self.weights.append(np.sqrt(2/sizes[i-1]) * np.random.randn(sizes[i-1], sizes[i]))
+        for i in range(self.num_of_layers-1):
+            weight = np.sqrt(2/sizes[i-1]) * np.random.randn(sizes[i], sizes[i+1])
+            self.weights.append(weight)
+            delta_weight.append(weight)
 
-        # Defining numpy zeroes for weight and bias list for updates in back propogation
-        delta_weight = []
-        delta_bias = []
-
-        for i in range(1, self.num_of_layers):
-            delta_weight.append(np.zeros((sizes[i], sizes[i-1])))
-            delta_bias.append(np.zeros((sizes[i], sizes[i-1])))
+        # for i in range(1, self.num_of_layers):
+        #     delta_weight.append(np.zeros((sizes[i], sizes[i-1])))
+        #     delta_bias.append(np.zeros((sizes[i], sizes[i-1])))
         
         self.delta_weight = delta_weight
         self.delta_bias = delta_bias
@@ -78,7 +79,6 @@ class ANN:
     def ReLU_prime(self, z):
         """ Define ReLU Activation Function prime
         """ 
-        print("Under ReLu =============================", z)
         return (z > 0) * 1
 
 
@@ -107,10 +107,12 @@ class ANN:
             input: y (actual value)
         """
         if derivative:
-            loss_derivative = 2*(predicted-actual).mean()
+            loss_compute = np.mean(predicted-actual, axis=0)
+            loss_derivative = 2*(loss_compute)
             return loss_derivative
         else:
-            loss_score = np.square(predicted-actual).mean()
+            loss_compute = np.mean(predicted-actual, axis=0)
+            loss_score = np.square(loss_compute)
             return loss_score
 
 
@@ -177,10 +179,8 @@ class ANN:
         activation_index = 0
         layer_output = input
         self.layer_outputs[0] = layer_output
-        print("===========================In Feed forward=========================================")
 
         for b, w in zip(self.biases, self.weights):
-            print("Feed Forward Shape", layer_output.shape)
             z = (np.dot(layer_output, w) +b)
             if self.activation_function[activation_index] == 'sigmoid':
                 layer_output = self.sigmoid(z)
@@ -192,7 +192,6 @@ class ANN:
                 layer_output = self.leaky_ReLU(z)
 
             self.layer_outputs[activation_index+1] = layer_output
-            print("Feed Forward Shape", layer_output.shape)
             activation_index+=1
             
         return layer_output
@@ -204,12 +203,8 @@ class ANN:
             loss_derivative: 
             output: 
         """
-        print("Old Output Shape", output.shape)
-
-        
         for i in reversed(range(self.num_of_layers-1)):
             output = self.layer_outputs[i+1]
-            print("New Output Shape", output.shape)
             if self.activation_function[i] == 'sigmoid':
                 activation_prime = self.sigmoid_prime(output)
             if  self.activation_function[i] == 'tanh':
@@ -226,17 +221,15 @@ class ANN:
             delta_reshaped = delta.reshape(delta.shape[0], -1).T
 
             # Making a 2D array of the output 
-            current_layer_output = self.layer_outputs[i]
+            current_layer_output = np.asarray(self.layer_outputs[i])
             output_reshaped = current_layer_output.reshape(current_layer_output.shape[0], -1)
 
-            # 
-            self.delta_weight[i] = np.dot(output_reshaped, delta_reshaped)
+            # self.delta_weight[i] = np.dot(output_reshaped, delta_reshaped)
 
             #
             self.delta_bias[i] = delta
 
             # 
-            print("Weights", self.weights[i].shape)
             loss_derivative = np.dot(delta, self.weights[i].T)
     
 
@@ -247,14 +240,12 @@ class ANN:
             delta_bias:
             learning_rate:
         """
-        for i in range(self.num_of_layers):
-            print ("========================= IN FGD========================")
+        for i in range(self.num_of_layers-1):
             weight = self.weights[i]
             weight += self.delta_weight[i] * learning_rate
             self.weights[i] = weight
 
-            self.biases[i] += self.delta_bias[i] * learning_rate
-
+            self.biases[i] += self.biases[i] * learning_rate
 
     def train(self, input, output, learning_rate, epochs):
         """ Function to train our model
@@ -266,22 +257,18 @@ class ANN:
         """
         # training the network by passing the training dataset to
         #   to the network epoch times
-        delta_weight = []
-        delta_bias = []
+        print("Training the network...")
         self.input = input
-        print("input head ", input.head())
         self.output = output
-        print("================= Training Started ==================")
 
         for i in range(epochs):
             total_error = 0
 
-            for X, y in zip(self.input, self.output):
+            for X, y in zip(input, output):
                 #input = np.expand_dims(input, 0)
-                
                 network_output = self.feed_forward(input)
 
-                loss_score, loss_derivative = self.calculate_loss(output, network_output,
+                loss_score, loss_derivative = self.calculate_loss(y, network_output,
                                                                   self.loss_function)
 
                 total_error += loss_score
@@ -290,7 +277,8 @@ class ANN:
 
                 self.full_gradient_descent(learning_rate)
 
-            print(f"Error for Epoch: {i} is {total_error}")
+            if i%10 == 0 or i==99:
+                print(f"Error for Epoch: {i} is {total_error}")
         
         print("========== END ==========")
 
