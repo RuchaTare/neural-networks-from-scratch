@@ -5,12 +5,11 @@ class ANN:
     def __init__(self, sizes, activation_function, loss_function, gradient_type):
         """ Initializing the input variables
         Args:
-            sizes:
-            learning_rate:
-            activation_function:
-            loss_function:
-            gradient_type:
-            epochs:
+            sizes: list of number of neurons in each layer
+            activation_function: list of activation function from one layer to another
+            loss_function: one loss function for each network
+            gradient_type: one gradient type for each network
+            epochs: number of epochs
         """
         self.sizes = sizes
         self.num_of_layers = len(sizes)
@@ -29,14 +28,11 @@ class ANN:
             weight = np.sqrt(2/sizes[i-1]) * np.random.randn(sizes[i], sizes[i+1])
             self.weights.append(weight)
             delta_weight.append(weight)
-
-        # for i in range(1, self.num_of_layers):
-        #     delta_weight.append(np.zeros((sizes[i], sizes[i-1])))
-        #     delta_bias.append(np.zeros((sizes[i], sizes[i-1])))
-        
+ 
         self.delta_weight = delta_weight
         self.delta_bias = delta_bias
         
+        # initializing layer_outputs
         layer_outputs=[]
         for i in range(self.num_of_layers):
             a = np.zeros(sizes[i])
@@ -48,42 +44,70 @@ class ANN:
     ######################################################
     def sigmoid(self, z):
         """ Define Sigmoid Activiation Function
+        Args:
+            z - activation i.e dot product of (layer_output, w) +b)
+        Returns:
+            sigmoid function of the activation
         """
         return 1.0/(1.0+np.exp(-z))
 
 
     def sigmoid_prime(self, z):
         """ Define Sigmoid Activation Function Prime
+        Args:
+            output - output from previous layer 
+        Returns:
+            activation prime - dervative of sigmoid activation function
         """
         return self.sigmoid(z)*(1-self.sigmoid(z))
 
 
     def tanh(self, z):
         """ Define tanh Activation Function
+        Args:
+            z - activation i.e dot product of (layer_output, w) +b)
+        Returns:
+            tanh function of the activation
         """
         return np.tanh(z)
 
 
     def tanh_prime(self, z):
         """ Define tanh Activation Function prime
+        Args:
+            output - output from previous layer 
+        Returns:
+            activation prime - dervative of tanh activation function
         """
         return 1 - np.tanh(z) ** 2
 
 
     def ReLU(self, z):
         """ Define ReLU Activation Function
+        Args:
+            z - activation i.e dot product of (layer_output, w) +b)
+        Returns:
+            ReLU function of the activation
         """
         return np.maximum(0, z)
 
     
     def ReLU_prime(self, z):
         """ Define ReLU Activation Function prime
+        Args:
+            output - output from previous layer 
+        Returns:
+            activation prime - dervative of ReLU activation function
         """ 
         return (z > 0) * 1
 
 
     def leaky_ReLU(z):
         """ Define Leaky ReLU activation function
+        Args:
+            z - activation i.e dot product of (layer_output, w) +b)
+        Returns:
+            LeakyRelu function of the activation
         """
         if z < 0:
             return z*0.01
@@ -93,18 +117,27 @@ class ANN:
 
     def leaky_ReLU_prime(z):
         """ Define Leaky ReLU Activation Function prime
+        Args:
+            output - output from previous layer 
+        Returns:
+            activation prime - dervative of LeakyRelu activation function
         """
         if z < 0:
             return 0.01
         else:
             return 1
 
-
+    ######################################################
+    #    Define all cost functions and its prime   #     
+    ######################################################
     def MSE(self, predicted, actual, derivative =False):
         """ Define MSE Cost Function
         Args:
             output: y-hat (predicted value)
             input: y (actual value)
+        Returns:
+            loss_score
+            loss_derivative
         """
         if derivative:
             loss_compute = np.mean(predicted-actual, axis=0)
@@ -121,7 +154,12 @@ class ANN:
         Args:
             predicted: y-hat (predicted value)
             actual: y (actual value)
+         Returns:
+            loss_score - Error of the whole network
+            loss_derivative - Derivative of the score
         """
+        # print("predicted output", predicted)
+        # print("actual output", actual)
         if derivative:
             loss_derivative = -(actual/predicted - (1-actual)/(1-predicted))
             return loss_derivative
@@ -130,12 +168,15 @@ class ANN:
             return loss_score
     
 
-    # requires changes
+    # requires changes as this might not be the correct formula - may be find another one - task on Rucha
     def cross_entropy(self, predicted, actual, derivative=False):
-        """ Define root mean squared error 
+        """ Define cross entropy function
         Args:
             predicted: y-hat (predicted value)
             actual: y (actual value)
+         Returns:
+            loss_score - Error of the whole network
+            loss_derivative - Derivative of the score
         """
         if derivative:
             loss_derivative = -np.sum(actual * np.log(predicted))
@@ -149,9 +190,12 @@ class ANN:
         """ Check for the loss function to be used
             Calculate and return the loss_score and derivate of loss_score
         Args:
-            actual:
-            predicted:
-            loss_function:
+            actual: Actual output given in the dataset
+            predicted: Predicted output using feedforward
+            loss_function: Loss function to calculate error of the network
+        Returns:
+           loss_score - Error of the whole network
+            loss_derivative - Derivative of the score
         """
         if loss_function == "MSE":
             loss_score = self.MSE(predicted, actual, derivative=False)
@@ -174,6 +218,10 @@ class ANN:
 
     def feed_forward(self, input):
         """ Define Feed Forward Pass
+        Args:
+            Input - Input from one layer to another
+        Returns:
+            Layer_Output - Output from Layer to another
         """
         # pass our inputs through our neural network
         activation_index = 0
@@ -202,6 +250,8 @@ class ANN:
         Args:
             loss_derivative: 
             output: 
+        Returns:
+
         """
         for i in reversed(range(self.num_of_layers-1)):
             output = self.layer_outputs[i+1]
@@ -224,17 +274,18 @@ class ANN:
             current_layer_output = np.asarray(self.layer_outputs[i])
             output_reshaped = current_layer_output.reshape(current_layer_output.shape[0], -1)
 
-            # self.delta_weight[i] = np.dot(output_reshaped, delta_reshaped)
+            #currently issues with this hence commented
+            #self.delta_weight[i] = np.dot(output_reshaped, delta_reshaped)
 
-            #
+            #Getting the delta bias as delta
             self.delta_bias[i] = delta
 
-            # 
-            loss_derivative = np.dot(delta, self.weights[i].T)
+            #updating the loss derivative to pass to next layers 
+            loss_derivative = np.dot(loss_derivative, self.weights[i].T)
     
 
     def full_gradient_descent(self, learning_rate):
-        """ Minimise the gradient
+        """ Minimise the gradient to find optima 
         Args: 
             delta_weight:
             delta_bias:
@@ -248,38 +299,46 @@ class ANN:
             self.biases[i] += self.biases[i] * learning_rate
 
     def train(self, input, output, learning_rate, epochs):
-        """ Function to train our model
+        """ Function to train the model
         Args:
             input:
             output:
             learning_rate:
-            epochs:            
+            epochs:  
+        Returns:
+            Network_output - Predicted values to be used to check the accuracy         
         """
         # training the network by passing the training dataset to
-        #   to the network epoch times
+        # the network epoch times
         print("Training the network...")
         self.input = input
         self.output = output
+        print("input shape", input.shape)
+        print("output shape", output.shape)
 
         for i in range(epochs):
             total_error = 0
 
             for X, y in zip(input, output):
-                #input = np.expand_dims(input, 0)
+               
+                
                 network_output = self.feed_forward(input)
 
                 loss_score, loss_derivative = self.calculate_loss(y, network_output,
-                                                                  self.loss_function)
+                                                                    self.loss_function)
 
+                #calculating the total error from all the training epochs
                 total_error += loss_score
 
+                #Back propogate to update weights biases and errors
                 self.back_propogation(loss_derivative, network_output)
-
+                
+                #Gradient Descent to minimize the gradient 
                 self.full_gradient_descent(learning_rate)
 
             if i%10 == 0 or i==99:
                 print(f"Error for Epoch: {i} is {total_error}")
         
         print("========== END ==========")
-
+        return network_output
 
