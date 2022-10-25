@@ -1,0 +1,7 @@
+[theme]
+primaryColor = "#150748"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#ECE8EC"
+textColor = "#150748"
+font = "sans serif"
+showPyplotGlobalUse = false

@@ -1,9 +1,13 @@
-import yaml
-import pandas as pd
 import numpy as np
-from ann import ANN
-from sklearn.model_selection import train_test_split
+import pandas as pd
+import yaml
+
 from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
+from neural_network.network import NeuralNetwork
+from neural_network.gradient_descent import batch_gradient_descent, stochastic_gradient_descent
 
 
 def get_config_data():
@@ -20,81 +24,135 @@ def get_config_data():
 
     with open(config_path) as f:
         configurations = yaml.safe_load(f)
-    
+
     return configurations
 
 
-def get_data():
+def load_dataset(path):
     """ Function to read data from source
     Args:
-        data_path: path to data source
+        path: path to data source
     Returns:
         Dataframe of the breast cancer data
     """
-    data_path = "./data/UCI_breast_cancer_data.csv"
 
-    bcwd_data = pd.read_csv(data_path, header=None)
+    data = pd.read_csv(path)
 
-    return bcwd_data
+    return data
 
 
-def pre_process(bcwd_data, train_split=0.70, test_split=0.30):
+def pre_process_data(data, train_split=0.70, val_split=0.30, test_split=0.50):
     """ Data Preprocessing for modelling
         - Data Normalising
         - Data Splitting into train and test
     """
-    # Data Normalising to change categorical variable to numeric
-    target_mapper = {"M": 1, "B": 0}
-    bcwd_data[1] = bcwd_data[1].apply(lambda x: target_mapper[str(x)])
+    # drop unamed column
+    data.drop(["Unnamed: 32", "id"], axis=1, inplace=True)
 
-    # defining dependant and independant variables
-    y = bcwd_data[1]
-    X = bcwd_data.drop([1],axis=1)
-    y = np.asarray(y)
+    X = data.drop('diagnosis', axis=1)
 
-    # Data Splitting 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, 
-                                                        test_size=test_split, 
-                                                        train_size=train_split, 
+    y = data.diagnosis
+    le = LabelEncoder()
+    y = le.fit_transform(y)
+
+    # Data Splitting
+    X_train, X_val, y_train, y_val = train_test_split(X, y,
+                                                        test_size=val_split,
+                                                        train_size=train_split,
                                                         random_state=30)
 
-    return X_train, X_test, y_train, y_test
+    X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=test_split, random_state=30)
+
+    sc = StandardScaler()
+    X_train = sc.fit_transform(X_train)
+    X_test = sc.fit_transform(X_test)
+    X_val = sc.fit_transform(X_val)
+
+    y_train = y_train.reshape(len(y_train), 1)
+    y_test = y_test.reshape(len(y_test), 1)
+    y_val = y_val.reshape(len(y_val), 1)
+
+    return X_train, X_test, X_val, y_train, y_test, y_val
 
 
+def predict(model, test_input, test_output):
+    predictions = model.feed_forward(test_input)
+    prediction_accuracy = accuracy_score((predictions > 0.5).astype(int), test_output)
+    return prediction_accuracy
 
-def main():
-    """ Function to run Neural Network
-    Execution sequence:
-        get_data 
-        pre_process data 
-        get_config_data 
-        initialization
-    """
-    data = get_data()
-    X_train, X_test, y_train, y_test = pre_process(data)
-    print(X_train.shape)
-    config = get_config_data()
 
+def main(config):
+    
+    # unpacking the configurations
     sizes = config["sizes"]
-    activation_function = config["activation_function"]
+    activation_functions = config["activation_function"]
     loss_function = config["loss_function"]
     gradient_type = config["gradient_type"]
     learning_rate = config["learning_rate"]
     epochs = config["epochs"]
 
-    # create an instance of neural network
-    ann = ANN(sizes, activation_function, loss_function, gradient_type)
+    batch_size = 100
+    data_path = "./data/data.csv"
 
-    # starting Model Training
-    y_predicted = ann.train(X_train, y_train, learning_rate, epochs)
+    # loading the data
+    data = load_dataset(data_path)
 
-    # calculating model accuracy
-    y_predicted = (y_predicted>0.5).astype(int)
-    model_accuracy = accuracy_score(y_predicted, y_train)
-    print("accuracy score:", model_accuracy)
+    # getting the data splits
+    X_train, X_test, X_val, y_train, y_test, y_val = pre_process_data(data)
+
+    # starting the model training
+    layers = []
+    for size, activation_function in zip(sizes, activation_functions):
+        layers.append((size, activation_function))
+
+    model = NeuralNetwork(X_train.shape[1],
+                          layers,
+                          learning_rate,
+                          loss_function
+                          ).create_network()
+
+    print(f"Model architecture...{model.architecture}")
+
+    if gradient_type == "SGD":
+        result = stochastic_gradient_descent(epochs,
+                                             model,
+                                             X_train,
+                                             y_train,
+                                             X_val,
+                                             y_val,
+                                             batch_size)
+        
+    else:
+        result = batch_gradient_descent(epochs,
+                                        model,
+                                        X_train,
+                                        y_train,
+                                        X_val,
+                                        y_val
+                                        )
+
+    # model training metrics
+    train_accuracy = result["accuracy"]["train"]
+    train_loss_list = result["losses"]["train"]
+    train_loss = sum(train_loss_list)/len(train_loss_list)
+
+    # model validation metrics
+    validation_accuracy = result["accuracy"]["validation"]
+    validation_loss_list = result["losses"]["validation"]
+    validation_loss = sum(validation_loss_list)/len(validation_loss_list)
+
+    # model testing metrics
+    test_accuracy = predict(model, X_test, y_test)
+
+    print(f"Model accuracy score...:{train_accuracy}")
+    print("Making prediction...")
+    print(f"Model prediction accuracy score...:{test_accuracy}")
+
+    return train_accuracy, train_loss_list, train_loss,\
+            validation_accuracy, validation_loss_list, validation_loss,\
+            test_accuracy
 
 
-
-if __name__ == "__main__":
-    main()
-
+if __name__ == '__main__':
+    config = get_config_data()
+    main(config)
