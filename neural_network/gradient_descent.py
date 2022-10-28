@@ -27,7 +27,7 @@ def batch_gradient_descent(epochs,
               + " ... Validation loss: " + str(validation_loss)
               )
 
-    accuracy['train'] = accuracy_score((network_output > 0.5).astype(int), y)
+    accuracy['train'] = accuracy_score((network_output > 0.5).astype(int), output)
     accuracy['validation'] = accuracy_score((val_network_output > 0.5).astype(int), validation_output)
 
     return {'losses': losses, 'accuracy': accuracy}

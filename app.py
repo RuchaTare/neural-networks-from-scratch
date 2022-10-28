@@ -74,8 +74,8 @@ if submit:
             "sizes": layer_sizes,
             "learning_rate": learning_rate,
             "activation_function": layer_activations,
-            "loss_function": "BCE",
-            "gradient_type": "SGD",
+            "loss_function": loss_function,
+            "gradient_type": gradient_type,
             "epochs": epochs
             }
     

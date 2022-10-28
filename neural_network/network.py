@@ -56,9 +56,9 @@ class NeuralNetwork:
 
             network_layer.level = idx
 
-            network_layer.weights = np.random.uniform(-1, 1,
-                                                      (network_input, nodes))
-            network_layer.bias = np.zeros((1, nodes))
+            network_layer.weights = np.sqrt(2/network_input)*np.random.randn(network_input, nodes)
+
+            network_layer.bias = np.sqrt(2/network_input)*np.random.randn(1, nodes)
             self.network.append(network_layer)
 
             self.architecture.append({
